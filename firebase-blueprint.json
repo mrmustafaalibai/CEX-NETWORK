@@ -1,0 +1,313 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and financial balance summary",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique Firebase Authentication UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display or legal name" },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "Account role" },
+        "status": { "type": "string", "enum": ["active", "suspended"], "description": "Account operating status" },
+        "referralCode": { "type": "string", "description": "Unique referral code assigned to user" },
+        "referredBy": { "type": "string", "description": "Referral code of inviter" },
+        "balancePkr": { "type": "number", "description": "Current available balance in PKR" },
+        "pendingBalancePkr": { "type": "number", "description": "Funds reserved or pending verification" },
+        "totalDepositedPkr": { "type": "number", "description": "Total lifetime approved deposits in PKR" },
+        "totalWithdrawnPkr": { "type": "number", "description": "Total lifetime paid withdrawals in PKR" },
+        "activeInvestedPkr": { "type": "number", "description": "Current capital committed to active plans" },
+        "verifiedReferralCount": { "type": "number", "description": "Count of eligible referrals" },
+        "isVerified": { "type": "boolean", "description": "KYC identity verification boolean" },
+        "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "approved", "rejected"], "description": "KYC verification status" },
+        "createdAt": { "type": "string", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Account update timestamp" }
+      },
+      "required": ["uid", "email", "role", "status", "referralCode", "balancePkr"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized administrator record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Admin UID" },
+        "email": { "type": "string", "description": "Admin email" },
+        "role": { "type": "string", "description": "Admin level" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Deposit": {
+      "title": "Deposit",
+      "description": "User deposit transaction request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique deposit ID" },
+        "userId": { "type": "string", "description": "User identifier" },
+        "userEmail": { "type": "string", "description": "User email address" },
+        "userDisplayName": { "type": "string", "description": "User display name" },
+        "amountPkr": { "type": "number", "description": "Requested deposit amount in PKR" },
+        "paymentMethodId": { "type": "string", "description": "ID of configured payment method" },
+        "paymentMethodName": { "type": "string", "description": "Name of payment method used" },
+        "transactionRef": { "type": "string", "description": "Proof transaction ID or TID" },
+        "receiptUrl": { "type": "string", "description": "Uploaded receipt image or reference" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "cancelled"], "description": "Status of deposit request" },
+        "adminRemarks": { "type": "string", "description": "Administrative notes on decision" },
+        "processedBy": { "type": "string", "description": "Admin UID who processed request" },
+        "processedAt": { "type": "string", "description": "Decision timestamp" },
+        "createdAt": { "type": "string", "description": "Submission timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "amountPkr", "paymentMethodName", "transactionRef", "status"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal",
+      "description": "User withdrawal payout request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique withdrawal ID" },
+        "userId": { "type": "string", "description": "User identifier" },
+        "userEmail": { "type": "string", "description": "User email address" },
+        "userDisplayName": { "type": "string", "description": "User display name" },
+        "amountPkr": { "type": "number", "description": "Gross withdrawal amount in PKR" },
+        "feePkr": { "type": "number", "description": "Processing fee in PKR" },
+        "netAmountPkr": { "type": "number", "description": "Net payable amount in PKR" },
+        "paymentMethod": { "type": "string", "description": "Payout channel" },
+        "accountTitle": { "type": "string", "description": "Account holder name" },
+        "accountNumber": { "type": "string", "description": "Account number or IBAN or wallet" },
+        "bankName": { "type": "string", "description": "Bank or provider name" },
+        "status": { "type": "string", "enum": ["pending", "processing", "paid", "rejected", "cancelled"], "description": "Payout status" },
+        "adminRemarks": { "type": "string", "description": "Administrative comments" },
+        "payoutRef": { "type": "string", "description": "Bank payment reference or UTR" },
+        "processedBy": { "type": "string", "description": "Admin UID who processed" },
+        "processedAt": { "type": "string", "description": "Decision timestamp" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "amountPkr", "accountTitle", "accountNumber", "status"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Investment plan tier definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique plan ID" },
+        "title": { "type": "string", "description": "Plan title" },
+        "description": { "type": "string", "description": "Detailed plan overview" },
+        "minAmountPkr": { "type": "number", "description": "Minimum investment required" },
+        "maxAmountPkr": { "type": "number", "description": "Maximum investment allowed" },
+        "durationDays": { "type": "number", "description": "Term duration in days" },
+        "expectedReturnRate": { "type": "number", "description": "Configured return percentage" },
+        "returnMethod": { "type": "string", "description": "Settlement model description" },
+        "status": { "type": "string", "enum": ["active", "inactive", "closed"], "description": "Plan availability" },
+        "riskLevel": { "type": "string", "description": "Risk profile rating" },
+        "terms": { "type": "string", "description": "Disclosures and terms" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "title", "minAmountPkr", "maxAmountPkr", "durationDays", "status"]
+    },
+    "UserPlan": {
+      "title": "UserPlan",
+      "description": "Active user investment subscription",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user plan instance ID" },
+        "userId": { "type": "string", "description": "User identifier" },
+        "userEmail": { "type": "string", "description": "User email" },
+        "planId": { "type": "string", "description": "Reference plan ID" },
+        "planTitle": { "type": "string", "description": "Plan title snapshot" },
+        "investedAmountPkr": { "type": "number", "description": "Amount locked in plan" },
+        "expectedReturnPkr": { "type": "number", "description": "Target calculated return" },
+        "status": { "type": "string", "enum": ["active", "completed", "cancelled"], "description": "Plan status" },
+        "startDate": { "type": "string", "description": "Start timestamp" },
+        "endDate": { "type": "string", "description": "Maturity timestamp" },
+        "settledAt": { "type": "string", "description": "Settlement timestamp" },
+        "createdAt": { "type": "string", "description": "Subscription timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "planId", "investedAmountPkr", "status", "startDate", "endDate"]
+    },
+    "LedgerEntry": {
+      "title": "LedgerEntry",
+      "description": "Immutable balance transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ledger transaction ID" },
+        "userId": { "type": "string", "description": "Target user ID" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "investment", "settlement", "commission", "adjustment"], "description": "Transaction category" },
+        "amountPkr": { "type": "number", "description": "Change amount in PKR" },
+        "balanceBeforePkr": { "type": "number", "description": "Balance prior to mutation" },
+        "balanceAfterPkr": { "type": "number", "description": "Balance post mutation" },
+        "status": { "type": "string", "enum": ["completed", "pending", "reversed"], "description": "Ledger state" },
+        "referenceId": { "type": "string", "description": "ID of related request or event" },
+        "description": { "type": "string", "description": "Detailed explanation" },
+        "createdBy": { "type": "string", "description": "Actor UID or system" },
+        "createdAt": { "type": "string", "description": "Record creation timestamp" }
+      },
+      "required": ["id", "userId", "type", "amountPkr", "status", "createdAt"]
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "Referral mapping and attribution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Referral link ID" },
+        "referrerId": { "type": "string", "description": "Inviter user UID" },
+        "referrerCode": { "type": "string", "description": "Referral code used" },
+        "refereeId": { "type": "string", "description": "Invited user UID" },
+        "refereeEmail": { "type": "string", "description": "Invited user email" },
+        "refereeName": { "type": "string", "description": "Invited user name" },
+        "status": { "type": "string", "enum": ["active", "verified"], "description": "Referral validation status" },
+        "bonusEligible": { "type": "boolean", "description": "Reward qualification flag" },
+        "createdAt": { "type": "string", "description": "Attribution timestamp" }
+      },
+      "required": ["id", "referrerId", "refereeId", "createdAt"]
+    },
+    "PaymentMethod": {
+      "title": "PaymentMethod",
+      "description": "Admin configured deposit account destination",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Payment method identifier" },
+        "name": { "type": "string", "description": "Method label e.g. Easypaisa" },
+        "type": { "type": "string", "enum": ["bank", "easypaisa", "jazzcash", "crypto"], "description": "Account category" },
+        "accountTitle": { "type": "string", "description": "Beneficiary account title" },
+        "accountNumber": { "type": "string", "description": "Account or wallet number" },
+        "bankName": { "type": "string", "description": "Bank or network name" },
+        "instructions": { "type": "string", "description": "Deposit procedure guide" },
+        "minDepositPkr": { "type": "number", "description": "Minimum single deposit" },
+        "maxDepositPkr": { "type": "number", "description": "Maximum single deposit" },
+        "isActive": { "type": "boolean", "description": "Enabled status" },
+        "sortOrder": { "type": "number", "description": "Display order" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "type", "accountTitle", "accountNumber", "isActive"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Customer support inquiry and correspondence",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Ticket identifier" },
+        "userId": { "type": "string", "description": "Submitting user UID" },
+        "userEmail": { "type": "string", "description": "User contact email" },
+        "subject": { "type": "string", "description": "Issue summary" },
+        "category": { "type": "string", "description": "Department or issue type" },
+        "message": { "type": "string", "description": "Detailed explanation" },
+        "status": { "type": "string", "enum": ["open", "in_progress", "resolved", "closed"], "description": "Ticket workflow status" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Priority tier" },
+        "adminResponse": { "type": "string", "description": "Support reply message" },
+        "createdAt": { "type": "string", "description": "Submission timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "subject", "message", "status"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global application configuration and disclosures",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string", "description": "Platform brand name" },
+        "supportWhatsApp": { "type": "string", "description": "WhatsApp contact number" },
+        "supportEmail": { "type": "string", "description": "Support email address" },
+        "minWithdrawalPkr": { "type": "number", "description": "Minimum withdrawal threshold" },
+        "maxWithdrawalPkr": { "type": "number", "description": "Maximum single withdrawal" },
+        "withdrawalFeePercent": { "type": "number", "description": "Withdrawal processing fee rate" },
+        "referralRewardPercent": { "type": "number", "description": "Referral reward rate percentage" },
+        "isInvestmentSettlementEnabled": { "type": "boolean", "description": "Flag controlling automated settlement" },
+        "announcementBanner": { "type": "string", "description": "Header broadcast announcement" },
+        "welcomeNotice": { "type": "string", "description": "Dashboard greeting bulletin" },
+        "riskDisclosure": { "type": "string", "description": "Mandatory financial risk disclosure text" },
+        "updatedAt": { "type": "string", "description": "Settings update timestamp" }
+      },
+      "required": ["siteName", "minWithdrawalPkr", "maxWithdrawalPkr"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System bulletins and transactional updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique notification ID" },
+        "userId": { "type": "string", "description": "Recipient UID or 'all' for broadcasts" },
+        "title": { "type": "string", "description": "Notification headline" },
+        "message": { "type": "string", "description": "Notification content" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "financial"], "description": "Visual indicator category" },
+        "isRead": { "type": "boolean", "description": "Read receipt status" },
+        "createdAt": { "type": "string", "description": "Dispatch timestamp" }
+      },
+      "required": ["id", "userId", "title", "message", "createdAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable security log of administrative actions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Log entry identifier" },
+        "adminId": { "type": "string", "description": "Executing administrator UID" },
+        "adminEmail": { "type": "string", "description": "Admin email address" },
+        "action": { "type": "string", "description": "Action performed" },
+        "targetCollection": { "type": "string", "description": "Target entity collection" },
+        "targetId": { "type": "string", "description": "Target document ID" },
+        "details": { "type": "string", "description": "Action metadata and reason" },
+        "createdAt": { "type": "string", "description": "Log timestamp" }
+      },
+      "required": ["id", "adminId", "action", "targetCollection", "targetId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with balance summary, identity and referral attributes"
+    },
+    "/admins/{userId}": {
+      "schema": "Admin",
+      "description": "Privileged administrator records"
+    },
+    "/deposits/{depositId}": {
+      "schema": "Deposit",
+      "description": "Incoming deposit requests submitted by users for admin approval"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Withdrawal payout requests submitted by users for processing"
+    },
+    "/plans/{planId}": {
+      "schema": "Plan",
+      "description": "Configurable investment plans"
+    },
+    "/userPlans/{userPlanId}": {
+      "schema": "UserPlan",
+      "description": "User subscribed investment plans and records"
+    },
+    "/ledgerEntries/{entryId}": {
+      "schema": "LedgerEntry",
+      "description": "Immutable transactional financial ledger"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "Referral team attributions"
+    },
+    "/paymentMethods/{methodId}": {
+      "schema": "PaymentMethod",
+      "description": "Deposit payment account methods configured by administrator"
+    },
+    "/supportTickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "User support tickets and inquiries"
+    },
+    "/siteSettings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Platform settings, announcements and financial thresholds"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User transaction alerts and platform announcements"
+    },
+    "/adminAuditLogs/{logId}": {
+      "schema": "AdminAuditLog",
+      "description": "Audit trail of privileged administrative modifications"
+    }
+  }
+}

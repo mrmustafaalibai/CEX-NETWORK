@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    border-color: rgba(255, 255, 255, 0.07);
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #05080e;
+    color: #f1f5f9;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #05080e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.surface-card {
+  background: #0b111c;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.surface-card-subtle {
+  background: #080d16;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.surface-hero-card {
+  background: linear-gradient(145deg, #0d1524 0%, #080e1a 100%);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  box-shadow: 0 12px 36px -12px rgba(2, 132, 199, 0.15);
+}
+
+.tap-active:active {
+  transform: scale(0.98);
+}

@@ -1,0 +1,284 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email is string && (
+          request.auth.token.email == 'mrmustafaalibaii@gmail.com' ||
+          request.auth.token.email.matches('(?i)^mrmustafaalibaii@gmail\\.com$')
+        ))
+      );
+    }
+
+    // Health / Connection check
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin();
+      allow write: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == adminId &&
+        (request.auth.token.email == 'mrmustafaalibaii@gmail.com' || request.auth.token.email.matches('(?i)^mrmustafaalibaii@gmail\\.com$'))
+      );
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+
+      // Creation on signup: user initializes standard initial balance and fields
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        incoming().uid == request.auth.uid &&
+        incoming().email is string && incoming().email.size() <= 100 &&
+        incoming().displayName is string && incoming().displayName.size() <= 100 &&
+        (incoming().role == 'user' || (incoming().role == 'admin' && isAdmin())) &&
+        incoming().status == 'active' &&
+        incoming().balancePkr == 0 &&
+        incoming().pendingBalancePkr == 0 &&
+        incoming().totalDepositedPkr == 0 &&
+        incoming().totalWithdrawnPkr == 0 &&
+        incoming().activeInvestedPkr == 0 &&
+        incoming().referralCode is string && incoming().referralCode.size() <= 32
+      );
+
+      // User Self-Update: Can update profile info or legally allocate balance to pending withdrawal / active investment
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.auth.uid == userId &&
+          incoming().uid == existing().uid &&
+          incoming().email == existing().email &&
+          incoming().role == existing().role &&
+          incoming().referralCode == existing().referralCode &&
+          (
+            // Profile fields update with untouched balances
+            (
+              incoming().balancePkr == existing().balancePkr &&
+              incoming().pendingBalancePkr == existing().pendingBalancePkr &&
+              incoming().totalDepositedPkr == existing().totalDepositedPkr &&
+              incoming().totalWithdrawnPkr == existing().totalWithdrawnPkr &&
+              incoming().activeInvestedPkr == existing().activeInvestedPkr &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'verificationStatus', 'isVerified', 'verificationDoc', 'updatedAt', 'phone'])
+            ) ||
+            // Reserve funds for pending withdrawal (balance decreases, pending increases by same amount)
+            (
+              incoming().balancePkr <= existing().balancePkr &&
+              incoming().balancePkr + incoming().pendingBalancePkr == existing().balancePkr + existing().pendingBalancePkr &&
+              incoming().activeInvestedPkr == existing().activeInvestedPkr &&
+              incoming().totalDepositedPkr == existing().totalDepositedPkr &&
+              incoming().totalWithdrawnPkr == existing().totalWithdrawnPkr &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['balancePkr', 'pendingBalancePkr', 'updatedAt'])
+            ) ||
+            // Allocate funds to investment plan (balance decreases, activeInvested increases by same amount)
+            (
+              incoming().balancePkr <= existing().balancePkr &&
+              incoming().balancePkr + incoming().activeInvestedPkr == existing().balancePkr + existing().activeInvestedPkr &&
+              incoming().pendingBalancePkr == existing().pendingBalancePkr &&
+              incoming().totalDepositedPkr == existing().totalDepositedPkr &&
+              incoming().totalWithdrawnPkr == existing().totalWithdrawnPkr &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['balancePkr', 'activeInvestedPkr', 'updatedAt'])
+            )
+          )
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Deposits Collection
+    match /deposits/{depositId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (request.query.limit <= 100 && resource.data.userId == request.auth.uid)
+      );
+
+      // Users can submit pending deposit requests only
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        incoming().amountPkr is number && incoming().amountPkr > 0 &&
+        incoming().status == 'pending' &&
+        incoming().paymentMethodName is string && incoming().paymentMethodName.size() <= 100 &&
+        incoming().transactionRef is string && incoming().transactionRef.size() <= 128
+      );
+
+      // Only administrators can review and approve or reject deposits
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Withdrawals Collection
+    match /withdrawals/{withdrawalId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (request.query.limit <= 100 && resource.data.userId == request.auth.uid)
+      );
+
+      // Users can submit pending withdrawal requests
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        incoming().amountPkr is number && incoming().amountPkr > 0 &&
+        incoming().status == 'pending' &&
+        incoming().accountTitle is string && incoming().accountTitle.size() <= 100 &&
+        incoming().accountNumber is string && incoming().accountNumber.size() <= 100
+      );
+
+      // Only administrators can process or reject withdrawals
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Plans Catalog
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User Subscribed Plans
+    match /userPlans/{userPlanId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (request.query.limit <= 100 && resource.data.userId == request.auth.uid)
+      );
+
+      // User initiates plan subscription with their own UID
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        incoming().investedAmountPkr is number && incoming().investedAmountPkr > 0 &&
+        incoming().status == 'active'
+      );
+
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Financial Ledger Entries (Append-only & Immutable)
+    match /ledgerEntries/{entryId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (request.query.limit <= 100 && resource.data.userId == request.auth.uid)
+      );
+
+      // Created through authorized client workflows or by admin
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (request.resource.data.userId == request.auth.uid && incoming().amountPkr is number)
+      );
+
+      // Ledger records are strictly immutable
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Referrals Mapping
+    match /referrals/{referralId} {
+      allow get: if isSignedIn() && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.refereeId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (resource.data.referrerId == request.auth.uid)
+      );
+
+      allow create: if isSignedIn() && request.resource.data.refereeId == request.auth.uid && (
+        incoming().referrerId != request.auth.uid
+      );
+
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Payment Methods
+    match /paymentMethods/{methodId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Support Tickets
+    match /supportTickets/{ticketId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid)
+      );
+
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        incoming().subject is string && incoming().subject.size() <= 200 &&
+        incoming().message is string && incoming().message.size() <= 2000 &&
+        incoming().status == 'open'
+      );
+
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.auth.uid == resource.data.userId && incoming().diff(existing()).affectedKeys().hasOnly(['message', 'updatedAt', 'status']))
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Site Settings
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.userId == 'all' ||
+        isAdmin()
+      );
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        request.resource.data.userId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.auth.uid == resource.data.userId && incoming().diff(existing()).affectedKeys().hasOnly(['isRead']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Admin Audit Logs
+    match /adminAuditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

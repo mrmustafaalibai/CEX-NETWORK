@@ -1,0 +1,6 @@
+{
+  "name": "CEX Network",
+  "description": "Full-stack institutional-grade financial investment platform with secure Firebase Authentication, real-time ledger, deposit and withdrawal workflows, and comprehensive admin suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
